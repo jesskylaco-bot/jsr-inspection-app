@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#152A4A" />
+  <title>Property Inspection Report — Johnson Signature Realty</title>
+
+  <link rel="icon" href="assets/favicon.ico" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <!-- ============================================================= -->
+  <!-- HEADER                                                        -->
+  <!-- ============================================================= -->
+  <header class="site-header">
+    <div class="header-inner">
+      <!-- Logo: JS swaps to a text fallback if the image is missing -->
+      <img id="brandLogo" class="brand-logo" src="assets/logo.png" alt="Johnson Signature Realty" />
+      <span id="brandLogoFallback" class="brand-logo-fallback" hidden>Company Logo</span>
+
+      <h1 class="brand-title">Johnson Signature Realty</h1>
+      <p class="brand-subtitle">Property Inspection Report</p>
+      <p class="brand-blurb">
+        Complete the inspection below. Once submitted, a professional PDF
+        inspection report will automatically be generated, saved, and downloaded.
+      </p>
+      <p class="brand-date" id="todayDate"></p>
+    </div>
+  </header>
+
+  <!-- ============================================================= -->
+  <!-- PROGRESS BAR (sticky)                                         -->
+  <!-- ============================================================= -->
+  <div class="progress" role="region" aria-label="Inspection progress">
+    <div class="progress-row">
+      <span class="progress-label">Inspection Progress</span>
+      <span class="progress-pct" id="progressPct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"
+           role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- FORM                                                          -->
+  <!-- ============================================================= -->
+  <main class="page">
+    <!-- novalidate: we run our own validation so messaging stays on-brand -->
+    <form id="inspectionForm" class="form" novalidate>
+
+      <!-- ---------- Property Information ---------- -->
+      <details class="card" name="inspection" open>
+        <summary class="card-summary">
+          <span class="card-title">Property Information</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <div class="field">
+            <label for="propertySearch">Property <span class="req">*</span></label>
+            <!-- Searchable dropdown: a text input + filtered listbox, built in JS.
+                 The real submitted value lives in the hidden #property input. -->
+            <div class="combo" id="propertyCombo">
+              <input type="text" id="propertySearch" class="combo-input"
+                     placeholder="Search by street, city, or ZIP…"
+                     role="combobox" aria-expanded="false" aria-autocomplete="list"
+                     aria-controls="propertyList" autocomplete="off" />
+              <ul id="propertyList" class="combo-list" role="listbox" hidden></ul>
+            </div>
+            <input type="hidden" id="property" name="property" required />
+            <p class="field-error" id="property-error" hidden></p>
+            <p class="field-hint" id="propertyStatus">Loading properties…</p>
+          </div>
+
+          <div class="field">
+            <label for="inspectionDate">Inspection Date <span class="req">*</span></label>
+            <input type="date" id="inspectionDate" name="inspectionDate" required />
+            <p class="field-error" id="inspectionDate-error" hidden></p>
+          </div>
+
+          <div class="field">
+            <label for="inspectorName">Inspector Name <span class="req">*</span></label>
+            <input type="text" id="inspectorName" name="inspectorName"
+                   autocomplete="name" required />
+            <p class="field-error" id="inspectorName-error" hidden></p>
+          </div>
+
+          <div class="field">
+            <label for="inspectorPhone">Contact Number</label>
+            <input type="tel" id="inspectorPhone" name="inspectorPhone"
+                   autocomplete="tel" inputmode="tel" />
+          </div>
+
+          <div class="field">
+            <!-- Required because the backend rejects submissions without it -->
+            <label for="inspectorEmail">Email <span class="req">*</span></label>
+            <input type="email" id="inspectorEmail" name="inspectorEmail"
+                   autocomplete="email" inputmode="email" required />
+            <p class="field-error" id="inspectorEmail-error" hidden></p>
+          </div>
+        </div>
+      </details>
+
+      <!-- ---------- Property Condition ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Property Condition</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <fieldset class="field">
+            <legend>Occupancy Status</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="occupancyStatus" value="Occupied" /><span>Occupied</span></label>
+              <label class="choice"><input type="radio" name="occupancyStatus" value="Vacant" /><span>Vacant</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Property Secure</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="propertySecure" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="propertySecure" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Violation Notice</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="violationNotice" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="violationNotice" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+        </div>
+      </details>
+
+      <!-- ---------- Doors & Windows ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Doors &amp; Windows</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <fieldset class="field">
+            <legend>Front Door Present</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="frontDoor" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="frontDoor" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Rear Door Present</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="rearDoor" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="rearDoor" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Side Door Present</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="sideDoor" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="sideDoor" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label for="brokenWindows">Windows Broken</label>
+            <input type="number" id="brokenWindows" name="brokenWindows" min="0" step="1" inputmode="numeric" />
+          </div>
+        </div>
+      </details>
+
+      <!-- ---------- Utilities ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Utilities</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <fieldset class="field">
+            <legend>Electric On</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="electric" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="electric" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Gas On</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="gas" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="gas" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Water On</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="water" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="water" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+        </div>
+      </details>
+
+      <!-- ---------- Roof & Gutters ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Roof &amp; Gutters</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <div class="field">
+            <label for="roofCondition">Roof Condition <span class="req">*</span></label>
+            <select id="roofCondition" name="roofCondition" required>
+              <option value="" disabled selected>Select…</option>
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Fair</option>
+              <option>Poor</option>
+            </select>
+            <p class="field-error" id="roofCondition-error" hidden></p>
+          </div>
+
+          <div class="field">
+            <label for="shingleType">Shingle Type</label>
+            <input type="text" id="shingleType" name="shingleType" />
+          </div>
+
+          <fieldset class="field">
+            <legend>Roof Damage</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="roofDamage" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="roofDamage" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Gutters Present</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="guttersPresent" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="guttersPresent" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Gutter Damage</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="gutterDamage" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="gutterDamage" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+        </div>
+      </details>
+
+      <!-- ---------- Damage Assessment ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Damage Assessment</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <fieldset class="field">
+            <legend>Fire Damage</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="fireDamage" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="fireDamage" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Water Damage</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="waterDamage" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="waterDamage" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Freeze Damage</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="freezeDamage" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="freezeDamage" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Vandalism</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="vandalism" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="vandalism" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label for="damageDescription">Damage Description</label>
+            <textarea id="damageDescription" name="damageDescription" rows="3"></textarea>
+          </div>
+        </div>
+      </details>
+
+      <!-- ---------- Plumbing & Electrical ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Plumbing &amp; Electrical</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <fieldset class="field">
+            <legend>Plumbing Damage</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="plumbingDamage" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="plumbingDamage" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Evidence of Leaks</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="leaks" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="leaks" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Electrical Damage</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="electricalDamage" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="electricalDamage" value="No" /><span>No</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend>Electrician Needed</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="electricianNeeded" value="Yes" /><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="electricianNeeded" value="No" /><span>No</span></label>
+              <label class="choice"><input type="radio" name="electricianNeeded" value="TBD" /><span>TBD</span></label>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label for="systemNotes">System Notes</label>
+            <textarea id="systemNotes" name="systemNotes" rows="3"></textarea>
+          </div>
+        </div>
+      </details>
+
+      <!-- ---------- Mechanical Systems ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Mechanical Systems</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <div class="field">
+            <label for="furnaceCondition">Furnace Condition</label>
+            <select id="furnaceCondition" name="furnaceCondition">
+              <option value="" disabled selected>Select…</option>
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Fair</option>
+              <option>Poor</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="furnaceAge">Furnace Age (years)</label>
+            <input type="number" id="furnaceAge" name="furnaceAge" min="0" step="1" inputmode="numeric" />
+          </div>
+
+          <div class="field">
+            <label for="waterTankCondition">Hot Water Tank Condition</label>
+            <select id="waterTankCondition" name="waterTankCondition">
+              <option value="" disabled selected>Select…</option>
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Fair</option>
+              <option>Poor</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="waterTankAge">Hot Water Tank Age (years)</label>
+            <input type="number" id="waterTankAge" name="waterTankAge" min="0" step="1" inputmode="numeric" />
+          </div>
+
+          <fieldset class="field">
+            <legend>Appliances Present</legend>
+            <div class="choices choices-grid">
+              <label class="choice"><input type="checkbox" name="appliances" value="Stove" /><span>Stove</span></label>
+              <label class="choice"><input type="checkbox" name="appliances" value="Refrigerator" /><span>Refrigerator</span></label>
+              <label class="choice"><input type="checkbox" name="appliances" value="Dishwasher" /><span>Dishwasher</span></label>
+              <label class="choice"><input type="checkbox" name="appliances" value="Washer" /><span>Washer</span></label>
+              <label class="choice"><input type="checkbox" name="appliances" value="Dryer" /><span>Dryer</span></label>
+              <label class="choice"><input type="checkbox" name="appliances" value="Microwave" /><span>Microwave</span></label>
+            </div>
+          </fieldset>
+        </div>
+      </details>
+
+      <!-- ---------- Kitchen Assessment ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Kitchen Assessment</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <div class="field">
+            <label for="kitchenCondition">Overall Kitchen Condition</label>
+            <select id="kitchenCondition" name="kitchenCondition">
+              <option value="" disabled selected>Select…</option>
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Fair</option>
+              <option>Poor</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="cabinets">Cabinet Condition</label>
+            <input type="text" id="cabinets" name="cabinets" />
+          </div>
+
+          <div class="field">
+            <label for="countertops">Countertop Condition</label>
+            <input type="text" id="countertops" name="countertops" />
+          </div>
+
+          <div class="field">
+            <label for="kitchenFlooring">Flooring Type &amp; Condition</label>
+            <input type="text" id="kitchenFlooring" name="kitchenFlooring" />
+          </div>
+
+          <div class="field">
+            <label for="kitchenNotes">Kitchen Notes</label>
+            <textarea id="kitchenNotes" name="kitchenNotes" rows="3"></textarea>
+          </div>
+        </div>
+      </details>
+
+      <!-- ---------- Bathroom Assessment ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Bathroom Assessment</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <div class="field">
+            <label for="bathroomCondition">Overall Bathroom Condition</label>
+            <select id="bathroomCondition" name="bathroomCondition">
+              <option value="" disabled selected>Select…</option>
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Fair</option>
+              <option>Poor</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="fixtures">Fixtures Condition</label>
+            <input type="text" id="fixtures" name="fixtures" />
+          </div>
+
+          <div class="field">
+            <label for="tileGrout">Tile &amp; Grout</label>
+            <input type="text" id="tileGrout" name="tileGrout" />
+          </div>
+
+          <div class="field">
+            <label for="ventilation">Ventilation</label>
+            <input type="text" id="ventilation" name="ventilation" />
+          </div>
+
+          <div class="field">
+            <label for="bathroomNotes">Bathroom Notes</label>
+            <textarea id="bathroomNotes" name="bathroomNotes" rows="3"></textarea>
+          </div>
+        </div>
+      </details>
+
+      <!-- ---------- Additional Information ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Additional Information</span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="card-body">
+          <div class="field">
+            <label for="estimatedValue">Estimated Real Market Value</label>
+            <input type="text" id="estimatedValue" name="estimatedValue" inputmode="numeric" placeholder="$" />
+          </div>
+
+          <div class="field">
+            <label for="estimatedRent">Market Rent (Monthly)</label>
+            <input type="text" id="estimatedRent" name="estimatedRent" inputmode="numeric" placeholder="$" />
+          </div>
+
+          <div class="field">
+            <label for="generalNotes">General Notes</label>
+            <textarea id="generalNotes" name="generalNotes" rows="3"></textarea>
+          </div>
+        </div>
+      </details>
+
+      <!-- ---------- Photos ---------- -->
+      <details class="card" name="inspection">
+        <summary class="card-summary">
+          <span class="card-title">Photos</span>
+          <span class="card-count" id="photoCount">0</span>
+        </summary>
+        <div class="card-body">
+          <!-- Single drop zone. Each thumbnail gets a category tag (built in JS),
+               so photos still map to the backend buckets:
+               exterior / kitchen / bathroom / utility / roof / general -->
+          <div class="dropzone" id="dropzone" tabindex="0" role="button"
+               aria-label="Add photos. Tap to choose, or drag and drop.">
+            <input type="file" id="photoInput" class="dropzone-input"
+                   accept="image/*" multiple />
+            <div class="dropzone-inner">
+              <span class="dropzone-icon" aria-hidden="true">+</span>
+              <span class="dropzone-text">Tap to add photos</span>
+              <span class="dropzone-sub">Camera or library · or drag &amp; drop here</span>
+            </div>
+          </div>
+          <div class="thumbs" id="thumbs" aria-live="polite"></div>
+        </div>
+      </details>
+
+      <!-- ---------- Submit ---------- -->
+      <div class="submit-bar">
+        <button type="submit" class="btn-submit" id="submitBtn">Submit Report</button>
+      </div>
+    </form>
+  </main>
+
+  <!-- ============================================================= -->
+  <!-- LOADING OVERLAY                                               -->
+  <!-- ============================================================= -->
+  <div class="overlay" id="loadingOverlay" hidden role="alertdialog"
+       aria-busy="true" aria-live="assertive" aria-label="Submitting inspection">
+    <div class="overlay-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="overlay-msg" id="loadingMsg">Submitting Inspection…</p>
+      <p class="overlay-sub">Please keep this page open.</p>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- SUCCESS SCREEN                                                -->
+  <!-- ============================================================= -->
+  <div class="overlay overlay-success" id="successOverlay" hidden role="dialog"
+       aria-live="polite" aria-label="Inspection submitted">
+    <div class="overlay-card success-card">
+      <div class="success-check" aria-hidden="true">
+        <svg viewBox="0 0 52 52" class="success-svg">
+          <circle class="success-circle" cx="26" cy="26" r="24" fill="none" />
+          <path class="success-tick" fill="none" d="M14 27l8 8 16-16" />
+        </svg>
+      </div>
+      <h2 class="success-title">Inspection Submitted Successfully</h2>
+
+      <dl class="success-meta">
+        <div><dt>Inspection ID</dt><dd id="successId">—</dd></div>
+        <div><dt>Property</dt><dd id="successProperty">—</dd></div>
+        <div><dt>Date</dt><dd id="successDate">—</dd></div>
+      </dl>
+
+      <div class="success-actions">
+        <a class="btn-primary" id="openPdfBtn" href="#" target="_blank" rel="noopener">Open PDF</a>
+        <button type="button" class="btn-secondary" id="downloadAgainBtn">Download Again</button>
+        <button type="button" class="btn-ghost" id="newInspectionBtn">Start New Inspection</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- ERROR TOAST                                                   -->
+  <!-- ============================================================= -->
+  <div class="toast" id="errorToast" hidden role="alert">
+    <span class="toast-msg" id="errorToastMsg"></span>
+    <button type="button" class="toast-retry" id="errorRetryBtn">Retry</button>
+    <button type="button" class="toast-close" id="errorCloseBtn" aria-label="Dismiss">×</button>
+  </div>
+
+  <!-- Scripts: config first, then app logic. No inline JS anywhere. -->
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
