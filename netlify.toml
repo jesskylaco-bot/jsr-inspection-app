@@ -1,0 +1,14 @@
+# Netlify configuration
+# Tells Netlify where the static site and the serverless functions live.
+
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# Use esbuild to bundle the function (zero-dependency, fast).
+[functions]
+  node_bundler = "esbuild"
+
+# Pin a Node runtime that includes the global fetch() (Node 18+).
+[build.environment]
+  NODE_VERSION = "18"
