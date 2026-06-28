@@ -757,8 +757,6 @@ textarea:focus-visible {
   }
   .success-circle, .success-tick { stroke-dashoffset: 0; }
 }
-}
-
 /* Hide elements using the HTML hidden attribute */
 [hidden] {
   display: none !important;
