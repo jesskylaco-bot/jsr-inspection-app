@@ -507,29 +507,82 @@
         </div>
       </details>
 
-      <!-- ---------- Photos ---------- -->
-      <details class="card" name="inspection">
-        <summary class="card-summary">
-          <span class="card-title">Photos</span>
-          <span class="card-count" id="photoCount">0</span>
-        </summary>
-        <div class="card-body">
-          <!-- Single drop zone. Each thumbnail gets a category tag (built in JS),
-               so photos still map to the backend buckets:
-               exterior / kitchen / bathroom / utility / roof / general -->
-          <div class="dropzone" id="dropzone" tabindex="0" role="button"
-               aria-label="Add photos. Tap to choose, or drag and drop.">
-            <input type="file" id="photoInput" class="dropzone-input"
-                   accept="image/*" multiple />
-            <div class="dropzone-inner">
-              <span class="dropzone-icon" aria-hidden="true">+</span>
-              <span class="dropzone-text">Tap to add photos</span>
-              <span class="dropzone-sub">Camera or library · or drag &amp; drop here</span>
-            </div>
-          </div>
-          <div class="thumbs" id="thumbs" aria-live="polite"></div>
-        </div>
-      </details>
+<!-- ---------- Photos ---------- -->
+<details class="card" name="inspection">
+  <summary class="card-summary">
+    <span class="card-title">Inspection Photos</span>
+  </summary>
+
+  <div class="card-body">
+
+    <!-- Exterior -->
+    <div class="photo-section">
+      <h3>Exterior Photos</h3>
+      <input type="file"
+             id="exteriorPhotos"
+             class="photo-input"
+             accept="image/*"
+             multiple>
+      <div id="exteriorThumbs" class="thumbs"></div>
+    </div>
+
+    <!-- Kitchen -->
+    <div class="photo-section">
+      <h3>Kitchen Photos</h3>
+      <input type="file"
+             id="kitchenPhotos"
+             class="photo-input"
+             accept="image/*"
+             multiple>
+      <div id="kitchenThumbs" class="thumbs"></div>
+    </div>
+
+    <!-- Bathroom -->
+    <div class="photo-section">
+      <h3>Bathroom Photos</h3>
+      <input type="file"
+             id="bathroomPhotos"
+             class="photo-input"
+             accept="image/*"
+             multiple>
+      <div id="bathroomThumbs" class="thumbs"></div>
+    </div>
+
+    <!-- Utility -->
+    <div class="photo-section">
+      <h3>Utility Photos</h3>
+      <input type="file"
+             id="utilityPhotos"
+             class="photo-input"
+             accept="image/*"
+             multiple>
+      <div id="utilityThumbs" class="thumbs"></div>
+    </div>
+
+    <!-- Roof -->
+    <div class="photo-section">
+      <h3>Roof Photos</h3>
+      <input type="file"
+             id="roofPhotos"
+             class="photo-input"
+             accept="image/*"
+             multiple>
+      <div id="roofThumbs" class="thumbs"></div>
+    </div>
+
+    <!-- General -->
+    <div class="photo-section">
+      <h3>General Photos</h3>
+      <input type="file"
+             id="generalPhotos"
+             class="photo-input"
+             accept="image/*"
+             multiple>
+      <div id="generalThumbs" class="thumbs"></div>
+    </div>
+
+  </div>
+</details>
 
       <!-- ---------- Submit ---------- -->
       <div class="submit-bar">
