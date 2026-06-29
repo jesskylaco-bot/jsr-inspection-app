@@ -20,9 +20,6 @@ const SUBMIT_FULL_ADDRESS = false;
 const PHOTO_MAX_DIM  = 1600;   // px on the longest edge
 const PHOTO_QUALITY  = 0.7;    // JPEG quality 0–1
 
-// Photo categories → must match the backend buckets exactly.
-const PHOTO_CATEGORIES = ['general', 'exterior', 'kitchen', 'bathroom', 'utility', 'roof'];
-
 // Loading overlay message sequence.
 const LOADING_MESSAGES = [
   'Submitting Inspection…',
@@ -35,12 +32,22 @@ const LOADING_MESSAGES = [
 /* -----------------------------------------------------------------
    App state
    ----------------------------------------------------------------- */
-let allProperties   = [];     // normalized [{ value, label, fullAddress, search }]
-let selectedProperty = null;  // the chosen property object
+let allProperties = [];       // normalized [{ value, label, fullAddress, search }]
+let selectedProperty = null;  // chosen property
 let propertyLoadFailed = false;
-let photos          = [];     // [{ id, name, mimeType, dataUrl }]
-let isSubmitting    = false;
-let loadingTimer    = null;
+
+// Categorized photo state
+let photos = {
+    exterior: [],
+    kitchen: [],
+    bathroom: [],
+    utility: [],
+    roof: [],
+    general: []
+};
+
+let isSubmitting = false;
+let loadingTimer = null;
 
 /* -----------------------------------------------------------------
    Boot
@@ -200,7 +207,7 @@ function initPropertyCombobox() {
         li.textContent = p.label;
       }
       li.addEventListener('mousedown', (e) => {
-        e.preventDefault();           // keep focus, fire before blur
+        e.preventDefault();            // keep focus, fire before blur
         choose(p);
       });
       list.appendChild(li);
@@ -256,68 +263,67 @@ function initPropertyCombobox() {
 }
 
 /* =================================================================
-   Photos — pick / drop / compress / preview
+   Photos — pick / compress / preview (Categorized)
    ================================================================= */
 
 function initPhotoUpload() {
-  const dropzone = document.getElementById('dropzone');
-  const input    = document.getElementById('photoInput');
-  const thumbs   = document.getElementById('thumbs');
-
-  input.addEventListener('change', () => { handleFiles(input.files); input.value = ''; });
-
-  // Keyboard activation of the dropzone.
-  dropzone.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+  // Wire up category inputs
+  const categories = ['exterior', 'kitchen', 'bathroom', 'utility', 'roof', 'general'];
+  
+  categories.forEach(cat => {
+      const input = document.getElementById(`${cat}Photos`);
+      if (input) {
+          input.addEventListener('change', e => {
+              handleFiles(e.target.files, cat);
+              e.target.value = ''; // Reset input so same files can be re-selected if needed
+          });
+      }
   });
 
-  // Drag & drop.
-  ['dragenter', 'dragover'].forEach(evt =>
-    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); }));
-  ['dragleave', 'drop'].forEach(evt =>
-    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); }));
-  dropzone.addEventListener('drop', (e) => { if (e.dataTransfer?.files) handleFiles(e.dataTransfer.files); });
-
-  // Remove + category change (event delegation).
-  thumbs.addEventListener('click', (e) => {
+  // Event delegation for remove buttons across all thumbs
+  document.addEventListener('click', (e) => {
     const btn = e.target.closest('.thumb-remove');
     if (!btn) return;
-    const id = btn.closest('.thumb').dataset.id;
-    photos = photos.filter(p => p.id !== id);
-    renderThumbs();
-  });
-  thumbs.addEventListener('change', (e) => {
-    const sel = e.target.closest('.thumb-cat');
-    if (!sel) return;
-    const id = sel.closest('.thumb').dataset.id;
-    const p = photos.find(x => x.id === id);
-    if (p) p.category = sel.value;
+    
+    const thumbDiv = btn.closest('.thumb');
+    const id = thumbDiv.dataset.id;
+    const cat = thumbDiv.dataset.category;
+    
+    // Remove from specific bucket
+    if (id && cat && photos[cat]) {
+        photos[cat] = photos[cat].filter(p => p.id !== id);
+        renderThumbs();
+    }
   });
 }
 
-/** Process a FileList: compress images, store, re-render. */
-async function handleFiles(fileList) {
+/** Process a FileList into a specific category: compress, store, re-render. */
+async function handleFiles(fileList, category) {
+  if (!fileList || !photos[category]) return;
+
   const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
   for (const file of files) {
     try {
       const dataUrl = await compressImage(file);
-      photos.push({
+      photos[category].push({
         id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         name: file.name || 'photo.jpg',
         mimeType: 'image/jpeg',
-        dataUrl,
-        category: 'general',
+        size: file.size,
+        uploadedAt: Date.now(),
+        dataUrl
       });
     } catch (err) {
       // Compression failed (e.g. odd format) — fall back to the raw file.
       try {
         const dataUrl = await readAsDataURL(file);
-        photos.push({
+        photos[category].push({
           id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          name: file.name || 'photo',
+          name: file.name || 'photo.jpg',
           mimeType: file.type || 'image/jpeg',
-          dataUrl,
-          category: 'general',
+          size: file.size,
+          uploadedAt: Date.now(),
+          dataUrl
         });
       } catch (_) { /* skip this file */ }
     }
@@ -358,53 +364,59 @@ function readAsDataURL(file) {
   });
 }
 
-/** Render thumbnails with remove buttons and category selects. */
+/** Render thumbnails for all categories and update count. */
 function renderThumbs() {
-  const thumbs = document.getElementById('thumbs');
-  thumbs.innerHTML = '';
-  photos.forEach(p => {
-    const div = document.createElement('div');
-    div.className = 'thumb';
-    div.dataset.id = p.id;
+  let totalCount = 0;
+  
+  Object.keys(photos).forEach(cat => {
+      const container = document.getElementById(`${cat}Thumbs`);
+      if (!container) return; // Skip if container isn't in the HTML
+      
+      container.innerHTML = '';
+      
+      photos[cat].forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'thumb';
+        div.dataset.id = p.id;
+        div.dataset.category = cat; // Store category so remove button knows where to look
 
-    const img = document.createElement('img');
-    img.src = p.dataUrl;
-    img.alt = p.name;
+        const img = document.createElement('img');
+        img.src = p.dataUrl;
+        img.alt = p.name;
 
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'thumb-remove';
-    remove.setAttribute('aria-label', `Remove ${p.name}`);
-    remove.textContent = '×';
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'thumb-remove';
+        remove.setAttribute('aria-label', `Remove ${p.name}`);
+        remove.textContent = '×';
 
-    const cat = document.createElement('select');
-    cat.className = 'thumb-cat';
-    cat.setAttribute('aria-label', 'Photo category');
-    PHOTO_CATEGORIES.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c;
-      opt.textContent = c.charAt(0).toUpperCase() + c.slice(1);
-      if (c === p.category) opt.selected = true;
-      cat.appendChild(opt);
-    });
-
-    div.append(img, remove, cat);
-    thumbs.appendChild(div);
+        div.append(img, remove);
+        container.appendChild(div);
+      });
+      
+      totalCount += photos[cat].length;
   });
-  document.getElementById('photoCount').textContent = String(photos.length);
+
+  const countEl = document.getElementById('photoCount');
+  if (countEl) {
+      countEl.textContent = String(totalCount);
+  }
 }
 
-/** Group photos into the backend bucket structure. */
+/** Format the categorized photos exactly how the backend expects them. */
 function buildPhotoBuckets() {
   const buckets = { exterior: [], kitchen: [], bathroom: [], utility: [], roof: [], general: [] };
-  photos.forEach(p => {
-    const cat = buckets[p.category] ? p.category : 'general';
-    buckets[cat].push({
-      blob: p.dataUrl.split(',')[1] || '',  // raw base64 (no data: prefix)
-      mimeType: p.mimeType,
-      name: p.name,
-    });
+  
+  Object.keys(photos).forEach(cat => {
+      buckets[cat] = photos[cat].map(p => ({
+          blob: p.dataUrl.split(',')[1] || '',  // raw base64 (no data: prefix)
+          mimeType: p.mimeType,
+          name: p.name,
+          size: p.size,
+          uploadedAt: p.uploadedAt
+      }));
   });
+  
   return buckets;
 }
 
@@ -577,7 +589,7 @@ function collectFormData() {
     data.property = selectedProperty.fullAddress;
   }
 
-  // Photos: grouped into the backend bucket structure.
+  // Photos: categorized directly from state.
   data.photos = buildPhotoBuckets();
 
   return data;
@@ -647,7 +659,17 @@ function initSuccessButtons() {
 function resetForNewInspection() {
   const form = document.getElementById('inspectionForm');
   form.reset();
-  photos = [];
+  
+  // Strictly reset categorized photo state back to an object (not an array)
+  photos = {
+      exterior: [],
+      kitchen: [],
+      bathroom: [],
+      utility: [],
+      roof: [],
+      general: []
+  };
+  
   selectedProperty = null;
   renderThumbs();
 
