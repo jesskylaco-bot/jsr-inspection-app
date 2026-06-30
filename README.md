@@ -46,17 +46,18 @@ Photos are **never** batched into the Submit request. Instead:
    just that photo, not the whole form. Already-uploaded photos persist to
    `localStorage`, so a page reload mid-inspection doesn't lose them.
 4. **Submit = metadata only.** `action: 'submit'` sends form answers plus
-   `{ category: [{ fileId, name }] } }` — no image bytes. The backend creates
-   the inspection folder (`123 Main St — INS-20260630-...`), creates a
-   subfolder per category, and **moves** (not re-uploads) each file from Temp
-   Uploads into place. The move is idempotent, so pressing Submit again after
-   a partial failure safely picks up where it left off.
-5. **PDF links, doesn't embed.** The generated PDF includes an "Inspection
-   Photos" section linking to the Drive folder instead of embedding every
-   image, so report generation stays fast regardless of photo count.
+   `{ category: [{ fileId, name }] } }` — no image bytes. The backend gets or
+   creates the property's `Inspection Photos` folder, creates a subfolder per
+   category, and **moves** (not re-uploads) each file from Temp Uploads into
+   place. The move is idempotent, so pressing Submit again after a partial
+   failure safely picks up where it left off.
+5. **PDF links, doesn't embed.** The generated PDF includes a `{{PHOTO_LINK}}`
+   placeholder linking to the Drive folder instead of embedding every image,
+   so report generation stays fast regardless of photo count.
 
-The Apps Script source lives in [`apps-script/Code.gs`](apps-script/Code.gs) —
-see that file's header comment for one-time setup and deployment steps.
+The Apps Script source lives in [`apps-script/`](apps-script/) (`Code.gs`,
+`Config.gs`, `Reports.gs`, `Template.gs`, `Utilities.gs`, `PhotoUpload.gs`) —
+see "One-time Apps Script setup" below for deployment steps.
 
 ---
 
@@ -69,7 +70,12 @@ inspection-app/
 │   ├── favicon.ico         (you provide — tab icon, optional)
 │   └── README.txt
 ├── apps-script/
-│   └── Code.gs              the Google Apps Script backend (paste into your Apps Script project)
+│   ├── Code.gs              entry point: doGet/doPost, action routing
+│   ├── Config.gs            Drive/Doc/Sheet IDs + placeholder map
+│   ├── PhotoUpload.gs       temp upload, idempotent move-on-submit
+│   ├── Reports.gs           report generation + PDF export
+│   ├── Template.gs          template copy + placeholder replacement
+│   └── Utilities.gs         shared helpers (IDs, dates, Drive, logging)
 ├── netlify/
 │   └── functions/
 │       └── inspection.js   the proxy (forwards GET + POST to Apps Script)
@@ -187,29 +193,38 @@ Field names match the form's `name=` attributes (e.g. `inspectorPhone`,
 ### Drive folder structure
 
 ```
-Inspection Reports/
-├── _TempUploads/                       (scratch space, drains on every submit)
-└── 123 Main St — INS-20260630-143000/
-    ├── Exterior/
-    ├── Kitchen/
-    ├── Bathroom/
-    ├── Utility/
-    ├── Roof/
-    ├── General/
-    └── INS-20260630-143000 - 123 Main St.pdf
+<ROOT_FOLDER_ID>/
+└── _TempUploads/                       (shared scratch space, drains on every submit)
+
+<PROPERTIES_FOLDER_ID>/
+└── 123 Main St/
+    ├── Inspection Photos/
+    │   ├── Exterior/
+    │   ├── Kitchen/
+    │   ├── Bathroom/
+    │   ├── Utility/
+    │   ├── Roof/
+    │   └── General/
+    └── Reports/
+        └── Inspection - 123 Main St - 2026-06-30.pdf
 ```
 
-The inspection folder is created **only on Submit** — picking photos before
-then only ever touches `_TempUploads`.
+Photos land in `_TempUploads` the moment they're picked. On Submit they're
+**moved** (not re-uploaded) into `<property>/Inspection Photos/<category>`,
+and the generated PDF is written to `<property>/Reports/`. Folder IDs are
+configured in `apps-script/Config.gs` (`ROOT_FOLDER_ID`,
+`PROPERTIES_FOLDER_ID`, `TEMPLATE_DOC_ID`, `LOG_SHEET_ID`).
 
 ### One-time Apps Script setup
 
-1. Open (or create) the Apps Script project tied to your Master Property
-   spreadsheet → paste `apps-script/Code.gs` in as `Code.gs`.
-2. Set `CONFIG.SPREADSHEET_ID` to that spreadsheet's ID (must have a
-   `Properties` sheet with header row `property | city | state | zip`).
-3. Run `setup()` once from the editor (▶) to auto-create the `Inspection
-   Reports` and `_TempUploads` Drive folders; check **Logs** for their IDs.
+1. Open the Apps Script project and add/update `Config.gs`, `Code.gs`,
+   `Reports.gs`, `Template.gs`, `Utilities.gs`, and `PhotoUpload.gs` from
+   `apps-script/`.
+2. Set `ROOT_FOLDER_ID`, `PROPERTIES_FOLDER_ID`, `TEMPLATE_DOC_ID`, and
+   `LOG_SHEET_ID` in `Config.gs` to your real Drive/Doc/Sheet IDs.
+3. Run `setupTempFolder()` once from the editor (▶) to confirm Drive access
+   and create the shared `_TempUploads` scratch folder; check **Logs** for
+   its URL.
 4. **Deploy → New deployment → Web app** → Execute as **Me**, Who has access
    **Anyone** → Deploy. Copy the `/exec` URL.
 5. Put that URL in `netlify/functions/inspection.js` (`APPS_SCRIPT_URL`), or
