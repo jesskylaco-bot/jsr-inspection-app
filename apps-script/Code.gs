@@ -114,6 +114,7 @@ function doPost(e) {
       });
     }
     data.photoFolderUrl = photoResult.folderUrl;
+    data.generalPhotosLink = photoResult.generalFolderUrl;
 
     // ── Generate report ─────────────────────────────────────
     const result = generateInspectionReport(data);

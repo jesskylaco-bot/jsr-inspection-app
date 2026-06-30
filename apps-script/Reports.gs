@@ -28,10 +28,10 @@ function generateInspectionReport(data) {
   }
 
   // 5. Build Map
+  // (buildReplacementMap already resolves {{GENERAL_PHOTOS_LINK}} from
+  // data.generalPhotosLink, set by movePhotosForSubmission in doPost.)
   const replacementMap = buildReplacementMap(data);
-  const photoLink = data.photoFolderUrl || "https://drive.google.com/drive/folders/1yXXK8_rirl4DB2dN03chb4EPz55fHo3M?usp=sharing";
-  replacementMap['{{PHOTO_LINK}}'] = photoLink;
-  replacementMap['{{GENERAL_PHOTOS_LINK}}'] = photoLink;
+  replacementMap['{{PHOTO_LINK}}'] = data.photoFolderUrl || "https://drive.google.com/drive/folders/1yXXK8_rirl4DB2dN03chb4EPz55fHo3M?usp=sharing";
 
   // 6. Replace Placeholders
   replacePlaceholders(doc, replacementMap);
