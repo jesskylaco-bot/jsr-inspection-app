@@ -714,10 +714,17 @@ async function handleSubmit(e) {
       throw new Error(data && data.error ? data.error : 'The report could not be generated. Please try again.');
     }
 
+    // Submit hands off to async processing on the backend (moving photos +
+    // generating the PDF can take longer than the proxy's request timeout
+    // for large photo counts), so poll until the job finishes.
+    const finalData = data.status === 'processing'
+      ? await pollSubmissionStatus(data.inspectionId)
+      : data;
+
     hideLoading();
     clearPersistedPhotos();
-    showSuccess(data);
-    deliverPdf(data.pdfUrl);
+    showSuccess(finalData);
+    deliverPdf(finalData.pdfUrl);
   } catch (err) {
     hideLoading();
     const offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
@@ -728,6 +735,40 @@ async function handleSubmit(e) {
     isSubmitting = false;
     btn.disabled = false;
   }
+}
+
+/**
+ * Polls ?action=checkStatus&inspectionId=... until the backend job
+ * finishes (status flips from "pending" to "complete"/"error").
+ *
+ * @param {string} inspectionId
+ * @returns {Promise<Object>}  The final job result (success/error shape)
+ */
+async function pollSubmissionStatus(inspectionId) {
+  const POLL_INTERVAL_MS = 3000;
+  const MAX_ATTEMPTS = 100; // ~5 minutes
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+
+    const res = await fetch(
+      `${CONFIG.WEB_APP_URL}?action=checkStatus&inspectionId=${encodeURIComponent(inspectionId)}`,
+      { method: 'GET' }
+    );
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); }
+    catch (_) { continue; } // transient bad response — keep polling
+
+    if (data.status === 'pending') continue;
+
+    if (!data.success) {
+      throw new Error(data.error || 'The report could not be generated. Please try again.');
+    }
+    return data;
+  }
+
+  throw new Error('Still processing — this is taking longer than usual. Check back in a minute; your submission was not lost.');
 }
 
 /** Build the JSON payload the backend expects — answers + photo metadata only. */
