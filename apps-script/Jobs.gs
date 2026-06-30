@@ -150,14 +150,38 @@ function _deleteTriggersFor_(handlerName) {
  * GET ?action=checkStatus&inspectionId=... handler. Returns the job's
  * current state so the frontend can poll until it's done.
  *
+ * Time-driven triggers (scheduleJobProcessing_) aren't guaranteed to fire
+ * promptly — Apps Script can delay them by anywhere from seconds to a
+ * couple minutes. Rather than make the inspector wait on that, the first
+ * poll to see a still-pending job just does the work itself, right here,
+ * inline. The trigger is kept only as a backup in case no poll ever comes
+ * in (e.g. the inspector closes the tab right after submitting). A script
+ * lock keeps the inline path and the trigger from double-processing the
+ * same job.
+ *
  * @param {string} inspectionId
  * @returns {Object}
  */
 function checkJobStatus(inspectionId) {
   if (!inspectionId) return errorResponse('Missing inspectionId.');
 
-  const job = readJob_(inspectionId);
+  let job = readJob_(inspectionId);
   if (!job) return errorResponse('No submission found for that inspection ID.');
+
+  if (job.status === 'pending') {
+    const lock = LockService.getScriptLock();
+    if (lock.tryLock(500)) {
+      try {
+        job = readJob_(inspectionId); // re-read: trigger may have just finished it
+        if (job.status === 'pending') {
+          processJob_(inspectionId, job.data);
+          job = readJob_(inspectionId);
+        }
+      } finally {
+        lock.releaseLock();
+      }
+    }
+  }
 
   if (job.status === 'complete') {
     return Object.assign({ success: true, status: 'complete' }, job.result);
