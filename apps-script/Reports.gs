@@ -29,7 +29,9 @@ function generateInspectionReport(data) {
 
   // 5. Build Map
   const replacementMap = buildReplacementMap(data);
-  replacementMap['{{PHOTO_LINK}}'] = data.photoFolderUrl || "https://drive.google.com/drive/folders/1yXXK8_rirl4DB2dN03chb4EPz55fHo3M?usp=sharing";
+  const photoLink = data.photoFolderUrl || "https://drive.google.com/drive/folders/1yXXK8_rirl4DB2dN03chb4EPz55fHo3M?usp=sharing";
+  replacementMap['{{PHOTO_LINK}}'] = photoLink;
+  replacementMap['{{GENERAL_PHOTOS_LINK}}'] = photoLink;
 
   // 6. Replace Placeholders
   replacePlaceholders(doc, replacementMap);

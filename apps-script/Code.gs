@@ -99,39 +99,23 @@ function doPost(e) {
 
     data.inspectionId = data.inspectionId || generateInspectionId();
 
-    // ── File already-uploaded photos into the property's category
-    //    folders. Only after every photo has moved successfully do we
-    //    generate the PDF — a partial failure leaves the inspection
-    //    folder + whatever DID move in place, ready for a retry.
-    const photoResult = movePhotosForSubmission(data.property, data.photos || {});
-    if (photoResult.moveErrors && photoResult.moveErrors.length) {
-      return jsonResponse({
-        success: false,
-        error: 'Some photos could not be filed into their category folders. Nothing was lost — press Submit again to retry.',
-        inspectionId: data.inspectionId,
-        photoFolderUrl: photoResult.folderUrl,
-        moveErrors: photoResult.moveErrors,
-      });
+    // ── Hand off to async processing ─────────────────────────
+    // Moving 50–200 photos out of Temp Uploads and generating the PDF can
+    // take longer than the Netlify proxy's request timeout, so submit
+    // just records the job and returns immediately. A trigger
+    // (Jobs.gs / processPendingJobs) does the actual work; the frontend
+    // polls ?action=checkStatus&inspectionId=... until it's done.
+    const existingJob = readJob_(data.inspectionId);
+    if (!existingJob || existingJob.status !== 'pending') {
+      writeJob_(data.inspectionId, data);
     }
-    data.photoFolderUrl = photoResult.folderUrl;
+    scheduleJobProcessing_();
 
-    // ── Generate report ─────────────────────────────────────
-    const result = generateInspectionReport(data);
-
-    logToSheet({
+    return jsonResponse({
+      success: true,
+      status: 'processing',
       inspectionId: data.inspectionId,
-      property: data.property,
-      inspectorName: data.inspectorName,
-      date: data.inspectionDate,
-      pdfUrl: result.pdfUrl,
-      status: 'Complete',
     });
-
-    return jsonResponse(Object.assign({}, result, {
-      inspectionId: data.inspectionId,
-      inspectionDate: data.inspectionDate,
-      photoFolderUrl: photoResult.folderUrl,
-    }));
 
   } catch (err) {
     console.error('doPost unhandled error:', err);
@@ -144,6 +128,7 @@ function doPost(e) {
  *
  * Supports:
  * ?action=getProperties
+ * ?action=checkStatus&inspectionId=...
  * Default: Health Check
  */
 function doGet(e) {
@@ -152,6 +137,10 @@ function doGet(e) {
 
     if (action === "getProperties") {
       return jsonResponse(getProperties());
+    }
+
+    if (action === "checkStatus") {
+      return jsonResponse(checkJobStatus(e.parameter.inspectionId));
     }
 
     // Default health check

@@ -714,10 +714,17 @@ async function handleSubmit(e) {
       throw new Error(data && data.error ? data.error : 'The report could not be generated. Please try again.');
     }
 
+    // Submit hands off to async processing on the backend (moving photos +
+    // generating the PDF can take longer than the proxy's request timeout
+    // for large photo counts), so poll until the job finishes.
+    const finalData = data.status === 'processing'
+      ? await pollSubmissionStatus(data.inspectionId)
+      : data;
+
     hideLoading();
     clearPersistedPhotos();
-    showSuccess(data);
-    deliverPdf(data.pdfUrl);
+    showSuccess(finalData);
+    deliverPdf(finalData.pdfUrl);
   } catch (err) {
     hideLoading();
     const offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
@@ -728,6 +735,40 @@ async function handleSubmit(e) {
     isSubmitting = false;
     btn.disabled = false;
   }
+}
+
+/**
+ * Polls ?action=checkStatus&inspectionId=... until the backend job
+ * finishes (status flips from "pending" to "complete"/"error").
+ *
+ * @param {string} inspectionId
+ * @returns {Promise<Object>}  The final job result (success/error shape)
+ */
+async function pollSubmissionStatus(inspectionId) {
+  const POLL_INTERVAL_MS = 3000;
+  const MAX_ATTEMPTS = 100; // ~5 minutes
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+
+    const res = await fetch(
+      `${CONFIG.WEB_APP_URL}?action=checkStatus&inspectionId=${encodeURIComponent(inspectionId)}`,
+      { method: 'GET' }
+    );
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); }
+    catch (_) { continue; } // transient bad response — keep polling
+
+    if (data.status === 'pending') continue;
+
+    if (!data.success) {
+      throw new Error(data.error || 'The report could not be generated. Please try again.');
+    }
+    return data;
+  }
+
+  throw new Error('Still processing — this is taking longer than usual. Check back in a minute; your submission was not lost.');
 }
 
 /** Build the JSON payload the backend expects — answers + photo metadata only. */
@@ -781,22 +822,24 @@ function hideLoading() {
    Success screen
    ================================================================= */
 
+let lastPdfUrl = null;
+
 function showSuccess(data) {
   document.getElementById('successId').textContent       = data.inspectionId || '—';
   document.getElementById('successProperty').textContent = data.property || document.getElementById('property').value || '—';
   document.getElementById('successDate').textContent     = data.inspectionDate || document.getElementById('inspectionDate').value || '—';
 
-  const openBtn = document.getElementById('openPdfBtn');
-  if (data.pdfUrl) { openBtn.href = data.pdfUrl; openBtn.hidden = false; }
-  else { openBtn.hidden = true; }
+  lastPdfUrl = data.pdfUrl || null;
+
+  const downloadAgainBtn = document.getElementById('downloadAgainBtn');
+  downloadAgainBtn.hidden = !lastPdfUrl;
 
   document.getElementById('successOverlay').hidden = false;
 }
 
 function initSuccessButtons() {
   document.getElementById('downloadAgainBtn').addEventListener('click', () => {
-    const url = document.getElementById('openPdfBtn').href;
-    if (url && url !== '#') window.open(url, '_blank');
+    if (lastPdfUrl) window.open(lastPdfUrl, '_blank');
   });
   document.getElementById('newInspectionBtn').addEventListener('click', resetForNewInspection);
 }

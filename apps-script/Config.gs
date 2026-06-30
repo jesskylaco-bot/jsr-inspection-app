@@ -64,6 +64,17 @@ const INSPECTION_PHOTOS_FOLDER_NAME = 'Inspection Photos';
  */
 const TEMP_UPLOADS_FOLDER_NAME = '_TempUploads';
 
+/**
+ * Folder (directly under ROOT_FOLDER_ID) holding one JSON file per submitted
+ * inspection. Submit writes the job here and returns immediately instead of
+ * moving photos + generating the PDF inline — that work can take longer
+ * than the Netlify proxy's request timeout for large photo counts, so it
+ * runs in a follow-up trigger instead. The frontend polls
+ * ?action=checkStatus&inspectionId=... until the job's status flips to
+ * "complete" or "error".
+ */
+const JOBS_FOLDER_NAME = '_Jobs';
+
 // ────────────────────────────────────────────────────────────────
 // TEMPLATE PLACEHOLDERS
 // ────────────────────────────────────────────────────────────────
