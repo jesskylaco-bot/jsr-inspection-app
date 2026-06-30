@@ -831,16 +831,8 @@ function showSuccess(data) {
 
   lastPdfUrl = data.pdfUrl || null;
 
-  const openBtn = document.getElementById('openPdfBtn');
   const downloadAgainBtn = document.getElementById('downloadAgainBtn');
-  if (lastPdfUrl) {
-    openBtn.href = lastPdfUrl;
-    openBtn.hidden = false;
-    downloadAgainBtn.hidden = false;
-  } else {
-    openBtn.hidden = true;
-    downloadAgainBtn.hidden = true;
-  }
+  downloadAgainBtn.hidden = !lastPdfUrl;
 
   document.getElementById('successOverlay').hidden = false;
 }
