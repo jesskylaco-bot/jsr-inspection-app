@@ -553,6 +553,77 @@ textarea:focus-visible {
   margin-top: 18px;
 }
 
+#photoUploadSummary.has-failures {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* ---------- Upload status badges on each thumb ---------- */
+.thumb-status {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 8px;
+  font-size: .72rem;
+  font-weight: 600;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.thumb-status-uploading {
+  background: rgba(21, 42, 74, .82);
+  color: #fff;
+}
+
+.thumb-status-uploaded {
+  background: rgba(36, 110, 70, .85);
+  color: #fff;
+}
+
+.thumb-status-failed {
+  background: var(--danger);
+  color: #fff;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+.thumb-retry {
+  border: 1px solid #fff;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.thumb-retry:hover {
+  background: #fff;
+  color: var(--danger);
+}
+
+.thumb-spinner {
+  width: 11px;
+  height: 11px;
+  border: 2px solid rgba(255, 255, 255, .4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  display: inline-block;
+  animation: thumb-spin .7s linear infinite;
+}
+
+@keyframes thumb-spin {
+  to { transform: rotate(360deg); }
+}
+
+.thumb-failed img { opacity: .55; }
+
 /* =================================================================
    SUBMIT BAR (sticky bottom)
    ================================================================= */
