@@ -822,22 +822,32 @@ function hideLoading() {
    Success screen
    ================================================================= */
 
+let lastPdfUrl = null;
+
 function showSuccess(data) {
   document.getElementById('successId').textContent       = data.inspectionId || '—';
   document.getElementById('successProperty').textContent = data.property || document.getElementById('property').value || '—';
   document.getElementById('successDate').textContent     = data.inspectionDate || document.getElementById('inspectionDate').value || '—';
 
+  lastPdfUrl = data.pdfUrl || null;
+
   const openBtn = document.getElementById('openPdfBtn');
-  if (data.pdfUrl) { openBtn.href = data.pdfUrl; openBtn.hidden = false; }
-  else { openBtn.hidden = true; }
+  const downloadAgainBtn = document.getElementById('downloadAgainBtn');
+  if (lastPdfUrl) {
+    openBtn.href = lastPdfUrl;
+    openBtn.hidden = false;
+    downloadAgainBtn.hidden = false;
+  } else {
+    openBtn.hidden = true;
+    downloadAgainBtn.hidden = true;
+  }
 
   document.getElementById('successOverlay').hidden = false;
 }
 
 function initSuccessButtons() {
   document.getElementById('downloadAgainBtn').addEventListener('click', () => {
-    const url = document.getElementById('openPdfBtn').href;
-    if (url && url !== '#') window.open(url, '_blank');
+    if (lastPdfUrl) window.open(lastPdfUrl, '_blank');
   });
   document.getElementById('newInspectionBtn').addEventListener('click', resetForNewInspection);
 }
