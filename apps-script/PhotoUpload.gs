@@ -108,7 +108,7 @@ function handleDeletePhoto(data) {
  *
  * @param {string} property  Property address
  * @param {Object} photos    { category: [{ fileId, name }] }
- * @returns {{ folderUrl: string, generalFolderUrl: string, moveErrors: Array }}
+ * @returns {{ folderUrl: string, moveErrors: Array }}
  */
 function movePhotosForSubmission(property, photos) {
   const propertiesFolder = DriveApp.getFolderById(PROPERTIES_FOLDER_ID);
@@ -117,7 +117,6 @@ function movePhotosForSubmission(property, photos) {
 
   const moveErrors = [];
   const categories = Object.keys(photos || {});
-  let generalFolderUrl = null;
 
   categories.forEach(category => {
     const items = Array.isArray(photos[category]) ? photos[category] : [];
@@ -125,10 +124,6 @@ function movePhotosForSubmission(property, photos) {
 
     const displayName = PHOTO_CATEGORY_MAP[category] || (category.charAt(0).toUpperCase() + category.slice(1));
     const categoryFolder = getOrCreateFolder(inspectionPhotosFolder, displayName);
-
-    if (category === 'general') {
-      generalFolderUrl = categoryFolder.getUrl();
-    }
 
     items.forEach(item => {
       const fileId = item && item.fileId;
@@ -144,11 +139,7 @@ function movePhotosForSubmission(property, photos) {
     });
   });
 
-  return {
-    folderUrl: inspectionPhotosFolder.getUrl(),
-    generalFolderUrl: generalFolderUrl || inspectionPhotosFolder.getUrl(),
-    moveErrors,
-  };
+  return { folderUrl: inspectionPhotosFolder.getUrl(), moveErrors };
 }
 
 /**
